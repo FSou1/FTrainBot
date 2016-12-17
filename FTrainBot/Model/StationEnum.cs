@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 namespace FTrainBot.Model {
     public enum StationEnum {
         Lobnya,
-        Timiryazevskaya
+        Timiryazevskaya,
+        Savelovskaya,
+        Belorusskaya
     }
 }

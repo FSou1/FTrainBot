@@ -7,6 +7,6 @@ using System.Threading.Tasks;
 
 namespace FTrainBot.TrainApi {
     public interface ITrainRunningTimeApi {
-        Task<IList<TrainRunningTime>> Fetch(StationEnum departureStation, DateTime departureTimeFrom, int count);
+        Task<IList<TrainRunningTime>> Fetch(StationEnum departure, StationEnum destination, DateTime departureTimeFrom, int count);
     }
 }

@@ -11,35 +11,32 @@ using System.Text.RegularExpressions;
 
 namespace FTrainBot.TrainApi {
     public class TutuApiClient : ITrainRunningTimeApi {
-        private static Dictionary<StationEnum, TrainStationDirection> dict = new Dictionary<StationEnum, TrainStationDirection> {
-            {
-                StationEnum.Lobnya,
-                new TrainStationDirection {
-                    StationId = 29804,
-                    DirectionId = "d1"
-                }
-            },
-            {
-                StationEnum.Timiryazevskaya,
-                new TrainStationDirection {
-                    StationId = 28704,
-                    DirectionId = "d9"
-                }
-            }
+        private static Dictionary<StationEnum, int> dict = new Dictionary<StationEnum, int> {
+            { StationEnum.Lobnya, 29804 },
+            { StationEnum.Timiryazevskaya, 28704 },
+            { StationEnum.Savelovskaya, 28604 },
+            { StationEnum.Belorusskaya,101 }
         };
 
-        public async Task<IList<TrainRunningTime>> Fetch(StationEnum departureStation, DateTime departureTimeFrom, int count) {
-            if (!dict.ContainsKey(departureStation))
-                throw new ArgumentException($"Unknown departureStation: {departureStation}");
+        public async Task<IList<TrainRunningTime>> Fetch(
+            StationEnum departure, 
+            StationEnum destination, 
+            DateTime departureTimeFrom, 
+            int count
+        ) {
+            if (!dict.ContainsKey(departure))
+                throw new ArgumentException($"Unknown departureStation: {departure}");
+            if(!dict.ContainsKey(destination))
+                throw new ArgumentException($"Unknown departureStation: {destination}");
 
-            var html = await Grab(dict[departureStation]);
+            var html = await Grab(dict[departure], dict[destination], departureTimeFrom.Date);
             var parsed = await Parse(html);
 
             return parsed.Where(d=>d.DepartureTime > departureTimeFrom).Take(count).ToList();
         }
 
-        private async Task<string> Grab(TrainStationDirection stationDirection) {
-            var url = $"http://www.tutu.ru/station.php?nnst={stationDirection.StationId}&list={stationDirection.DirectionId}&print=yes";
+        private async Task<string> Grab(int departureStationId, int destinationStationId, DateTime date) {
+            var url = $"http://www.tutu.ru/rasp.php?st1={departureStationId}&st2={destinationStationId}&date={date.ToShortDateString()}&print=yes";
             return await DownloadString(url);
         }
 
@@ -52,15 +49,16 @@ namespace FTrainBot.TrainApi {
         }
 
         private TrainRunningTime ParseLine(HtmlNode node) {
-            var routeInfo = node.SelectSingleNode("td[1]/a[1]").InnerText;
-            var timeInfo = node.SelectSingleNode("td[3]/div[1]").InnerText;
-            var condition = node.SelectSingleNode("td[4]").InnerText;
-            var parts = routeInfo.Split('→');
+            var departure = node.SelectSingleNode("td[10]/a[1]").InnerText;
+            var destination = node.SelectSingleNode("td[12]/a[1]").InnerText;
+            var departureTime = node.SelectSingleNode("td[2]/div/a[1]").InnerText;
+            var condition = node.SelectSingleNode("td[8]").InnerText;
+            var time = ExtractTimeCharacters(departureTime).Substring(0, 5);
 
             return new TrainRunningTime {
-                DepartureStation = parts[0],
-                DestinationStation = parts[1],
-                DepartureTime = DateTime.ParseExact(ExtractTimeCharacters(timeInfo), "HH:mm", CultureInfo.InvariantCulture),
+                DepartureStation = departure,
+                DestinationStation = destination,
+                DepartureTime = DateTime.ParseExact(time, "HH:mm", CultureInfo.GetCultureInfo("ru-RU")),
                 TrafficCondition = ExtractCyrillicCharacters(condition)
             };
         }
@@ -78,11 +76,6 @@ namespace FTrainBot.TrainApi {
             var request = new RestRequest();
             var response = await client.ExecuteTaskAsync(request);
             return response.Content;
-        }
-
-        internal class TrainStationDirection {
-            internal int StationId { get; set; }
-            internal string DirectionId { get; set; }
         }
     }
 }

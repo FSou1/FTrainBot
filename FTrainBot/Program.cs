@@ -13,7 +13,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 namespace FTrainBot {
     class Program {
         private static readonly TelegramBotClient Bot = 
-            new TelegramBotClient("<your bot api key>");
+            new TelegramBotClient("<You api key>");
 
         private static MessageHandler msgHandler = new MessageHandler(new TutuApiClient());
 
